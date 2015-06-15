@@ -160,19 +160,37 @@ def calcGamma(alpha,beta):
             gamma.mtx[s][t] = num/denom
     return gamma
 
-def calcXi(alpha,beta,A,B,obs):
-    xi = Matrix(B.m,B.m,len(obs)-1)
-    for s1 in xrange(xi.m):
-        for s2 in xrange(xi.n):
-            for t in xrange(xi.z):
-                num = alpha.xy(s1,t)*A.xy(s1,s2)*beta.xy(s2,t+1)*B.xy(s2,B.labels[obs[t]])
+def calcXi(alpha,beta,A,B,O):
+    xi = Matrix(len(O)-1,B.m,B.m)
+    for t in xrange(xi.m):
+        for i in xrange(xi.n):
+            for j in xrange(xi.z):
+                #print 'Setting xi[{}][{}][{}]'.format(t,i,j)
+                num = alpha.xy(i,t)*A.xy(i,j)*B.xy(j,B.labels[O[t+1]])*beta.xy(j,t+1)
+                #print '  num = {}*{}*{}*{}'.format(alpha.xy(i,t),A.xy(i,j),B.xy(j,B.labels[O[t+1]]),beta.xy(j,t+1))
                 denom = 0
-                for k in xrange(xi.m):
-                    denom += alpha.xy(k,t)*beta.xy(k,t)
-                xi.mtx[s1][s2][t] = num/denom
+                for p in xrange(xi.n):
+                    for q in xrange(xi.z):
+                        #print '  denom += (({})({})({})({}))'.format(alpha.xy(p,t),A.xy(p,q),B.xy(q,B.labels[O[t+1]]),beta.xy(q,t+1))
+                        denom += (alpha.xy(p,t)*A.xy(p,q)*B.xy(q,B.labels[O[t+1]])*beta.xy(q,t+1))
+                        #print '    denom += (alpha[{}][{}])(a[{}][{}])(b[{}][{}])(beta[{}][{}]) = {}'.format(p,t,p,q,q,B.labels[O[t+1]],q,t+1,denom)
+                        #print '    denom = {}'.format(denom)
+                xi.mtx[t][i][j] = num/denom
+                #raw_input('*')
     return xi
 
-# To be implemented
+#def calcXi(alpha,beta,A,B,obs):
+#    xi = Matrix(B.m,B.m,len(obs)-1)
+#    for s1 in xrange(xi.m):
+#        for s2 in xrange(xi.n):
+#            for t in xrange(xi.z):
+#                num = alpha.xy(s1,t)*A.xy(s1,s2)*beta.xy(s2,t+1)*B.xy(s2,B.labels[obs[t]])
+#                denom = 0
+#                for k in xrange(xi.m):
+#                    denom += alpha.xy(k,t)*beta.xy(k,t)
+#                xi.mtx[s1][s2][t] = num/denom
+#    return xi
+
 def calcNewPi(gamma,scale=True):
     newpi = Matrix(1,gamma.m)
     for s in xrange(gamma.m):
@@ -187,25 +205,29 @@ def calcNewA(xi,gamma):
     newa = Matrix(gamma.m,gamma.m)
     for i in xrange(newa.m):
         #print 'i: {}'.format(i)
-        denom = sum(gamma.mtx[i])
+        denom = sum(gamma.mtx[i][:-1])
         #print 'denom = sum({}) = {}'.format(gamma.mtx[i],denom)
+        num = 0
         for j in xrange(newa.n):
             #print '  j: {}'.format(j)
-            num = sum(xi.mtx[i][j])
-            #print 'num = sum({}) = {}'.format(xi.mtx[i][j],num)
+            #for x in xi.mtx:
+                #num += x[i][j]
+            #print 'num = sum([x[{}] for x in xi.col({})])'.format(j,i)
+            #print '=sum({})'.format([x[j] for x in xi.col(i)])
+            num = sum([x[j] for x in xi.col(i)])
             newa.mtx[i][j] = num/denom
+            #print 'newa[{}][{}] = {}/{}'.format(i,j,num,denom)
             #print 'newa[{}][{}] = {}/{} = {}'.format(i,j,num,denom,(num/denom))
     return newa
 
-def calcNewB(gamma,B,obs,counts):
-    newb = Matrix(B.m,B.n,labels=B.labels)
-    for s in xrange(newb.m):
-        olen = len(obs)
-        for t in xrange(olen):
-            vk = obs[t]
-            newb.mtx[s][newb.labels[vk]] = (counts[vk]*gamma.xy(s,t)) / sum(gamma.col(t))
+def calcNewB(gamma,O,V):
+    vlen = len(V)
+    newb = Matrix(gamma.m,vlen)
+    for t in xrange(newb.n):
+        for s in xrange(newb.m):
+            newb.mtx[s][t] = sum([gamma.mtx[s][i] for i in xrange(gamma.n) if O[i] == V[t]]) / sum(gamma.mtx[s])
     return newb
-
+    
 # Compute the probability of
 # an hmm
 def Phmm(alpha,T):
