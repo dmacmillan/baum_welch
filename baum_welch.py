@@ -236,9 +236,9 @@ def Phmm(alpha,T):
     return sum(alpha.col(T-1))
 
 # MULTIPLE OBSERVATIONS
-def mPhmm(Os,hmm):
+def mPhmm(Os,hmm,k):
     res = 1
-    for O in Os:
+    for O in Os[:k]:
         alpha = calcAlpha(hmm.A,hmm.B,hmm.pi,O,scale=True)
         res *= sum(alpha.col(alpha.n-1))
     return res
