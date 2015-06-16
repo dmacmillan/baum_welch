@@ -232,30 +232,9 @@ def calcNewB(gamma,O,V):
     
 # Compute the probability of
 # an hmm
-def Phmm(alpha,T):
-    return sum(alpha.col(T-1))
+def Phmm(alpha):
+    return sum(alpha.col(alpha.n-1))
 
 # MULTIPLE OBSERVATIONS
-def mPhmm(Os,hmm,k):
-    res = 1
-    for O in Os[:k]:
-        alpha = calcAlpha(hmm.A,hmm.B,hmm.pi,O,scale=True)
-        res *= sum(alpha.col(alpha.n-1))
-    return res
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+def Pk(Os,k,hmm):
+    return Phmm(calcAlpha(hmm.A,hmm.B,hmm.pi,Os[k],scale=True)[0])

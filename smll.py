@@ -19,7 +19,7 @@ for i,v in enumerate(V):
     B.labels[v] = i
 T = len(O)
 
-for i in xrange(10):
+for i in xrange(1):
     alpha,cs = calcAlpha(A,B,pi,O)
     beta = calcBeta(A,B,pi,O,cs)
     gamma = calcGamma(alpha,beta)
