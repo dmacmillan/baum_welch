@@ -81,6 +81,20 @@ class Matrix:
         mat.labels = labels
         return mat
 
+# return the counts of every sub-sequence
+# of length k within sequence s as well
+# as the actual subsequences
+def countSeq(s,k):
+    res = {}
+    l = []
+    for i in xrange(len(s)-k+1):
+        l.append(s[i:i+k])
+        if s[i:i+k] not in res:
+            res[s[i:i+k]] = 1
+        else:
+            res[s[i:i+k]] += 1
+    return [res,l]
+        
 # For an alphabet A (string), return a list
 # of all possible strings of length x (int)
 def generateAllXmers(A,x):
@@ -179,18 +193,6 @@ def calcXi(alpha,beta,A,B,O):
                 #raw_input('*')
     return xi
 
-#def calcXi(alpha,beta,A,B,obs):
-#    xi = Matrix(B.m,B.m,len(obs)-1)
-#    for s1 in xrange(xi.m):
-#        for s2 in xrange(xi.n):
-#            for t in xrange(xi.z):
-#                num = alpha.xy(s1,t)*A.xy(s1,s2)*beta.xy(s2,t+1)*B.xy(s2,B.labels[obs[t]])
-#                denom = 0
-#                for k in xrange(xi.m):
-#                    denom += alpha.xy(k,t)*beta.xy(k,t)
-#                xi.mtx[s1][s2][t] = num/denom
-#    return xi
-
 def calcNewPi(gamma,scale=True):
     newpi = Matrix(1,gamma.m)
     for s in xrange(gamma.m):
@@ -233,4 +235,27 @@ def calcNewB(gamma,O,V):
 def Phmm(alpha,T):
     return sum(alpha.col(T-1))
 
-# MULTIPLE OBSERVATIONS 
+# MULTIPLE OBSERVATIONS
+def mPhmm(Os,hmm):
+    res = 1
+    for O in Os:
+        alpha = calcAlpha(hmm.A,hmm.B,hmm.pi,O,scale=True)
+        res *= sum(alpha.col(len(alpha.m)-1)
+    return res
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
