@@ -240,7 +240,7 @@ def mPhmm(Os,hmm):
     res = 1
     for O in Os:
         alpha = calcAlpha(hmm.A,hmm.B,hmm.pi,O,scale=True)
-        res *= sum(alpha.col(len(alpha.m)-1)
+        res *= sum(alpha.col(len(alpha.m)-1))
     return res
 
 
