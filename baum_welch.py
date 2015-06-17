@@ -1,11 +1,19 @@
-import random,time,sys
+import random,time,sys,math
 
 class HMM:
 
-    def __init__(self,A,B,pi):
-        self.A = A
-        self.B = B
-        self.pi = pi
+    def __init__(self,A,B,pi,init=True):
+        if init:
+            self.A = A
+            self.B = B
+            self.pi = pi
+        else:
+            self.A, self.B, self.pi = None,None,None
+        self.O = None
+        self.counts = None
+        self.alpha = None
+        self.cs = None
+        self.beta = None
 
 class MatrixError(Exception):
     pass
@@ -231,10 +239,78 @@ def calcNewB(gamma,O,V):
     return newb
     
 # Compute the probability of
-# an hmm
+# an hmm (not scaled)
 def Phmm(alpha):
     return sum(alpha.col(alpha.n-1))
+    
+# Same as above but for scaled alpha
+def Pshmm(cs):
+    #return -1*sum([math.log(c) for c in cs])
+    prod = 1
+    for c in cs:
+        prod *= c
+    return 1/prod
 
+def printa(i,j,K):
+    return '''
+    \\bar a_{{{}{}}}
+    =\\frac{{
+    \\displaystyle\\sum_{{k=0}}^{{{}-1}}
+    \\frac{{1}}{{P_k}}
+    \\displaystyle\sum_{{t=0}}^{{T_k-2}}
+    \\hat\\alpha_t^k({})
+    a_{{{}{}}}
+    b_{}(O_{{t+1}}^{{(k)}})
+    \\hat\\beta_{{t+1}}^k({})
+    }}
+    {{
+    \\displaystyle\\sum_{{k=0}}^{{{}-1}}
+    \\frac{{1}}{{P_k}}
+    \\displaystyle\\sum_{{t=0}}^{{T_k-2}}
+    \\hat\\alpha_t^k({})
+    \\hat\\beta_t^k({})
+    }}
+    '''.format(i,j,K,i,i,j,j,j,K,i,i)
+    
 # MULTIPLE OBSERVATIONS
-def Pk(Os,k,hmm):
-    return Phmm(calcAlpha(hmm.A,hmm.B,hmm.pi,Os[k],scale=True)[0])
+def mcalcNewA(finhmm,hmms):
+    K = len(hmms)
+    f = open('./lastrun.html','w')
+    f.write('''<head><script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script></head>''')
+    f.write('<h1>\\[{}\\]</h1>'.format(printa('i','j','K')))
+    f.write('K = {}<br>'.format(K))
+    newa = Matrix(hmms[0].alpha.m,hmms[0].alpha.m)
+    for i in xrange(newa.m):
+        f.write('i = {}<br>'.format(i))
+        for j in xrange(newa.n):
+            f.write('{}j = {}<br>'.format('&nbsp;'*2,j))
+            f.write('{}\\({}\\)<br>'.format('&nbsp;'*2,printa(i,j,K)))
+            num,denom = 0,0
+            f.write('{}num = {}<br>'.format('&nbsp;'*2,num))
+            f.write('{}denom = {}<br>'.format('&nbsp;'*2,denom))
+            for k in xrange(K):
+                Tk = len(hmms[k].O)
+                f.write('{}k = {}<br>'.format('&nbsp;'*2,k))
+		f.write('{} \\( T_{} = {} \\)<br>'.format('&nbsp;'*4,k,Tk))
+                pk = Pshmm(hmms[k].cs)
+                f.write('{}\\( P_{} = {} \\)<br>'.format('&nbsp;'*4,k,pk))
+                for t in xrange(Tk-2):
+                    f.write('{}t = {}<br>'.format('&nbsp;'*4,t))
+                    num += ((1/pk)*hmms[k].alpha.xy(i,t)*finhmm.A.xy(i,j)*finhmm.B.xy(j,finhmm.B.labels[hmms[k].O[t+1]])*hmms[k].beta.xy(j,t+1))
+		    f.write('{}num \\( \\stackrel{{+}}{{=}} \\frac{{1}}{{P_{}}} \\hat\\alpha_{}^{}({}) a_{{{}{}}} b_{}(O_{{{}+1}}^{{({})}}) \\hat\\beta_{{{}+1}}^{}({}) \\)'.format('&nbsp;'*6,k,t,k,i,i,j,j,t,k,t,k,j))
+		    f.write(' = ({})({})({})({})({}) = {}<br>'.format((1/pk),hmms[k].alpha.xy(i,t),finhmm.A.xy(i,j),finhmm.B.xy(j,finhmm.B.labels[hmms[k].O[t+1]]),hmms[k].beta.xy(j,t+1),((1/pk)*hmms[k].alpha.xy(i,t)*finhmm.A.xy(i,j)*finhmm.B.xy(j,finhmm.B.labels[hmms[k].O[t+1]])*hmms[k].beta.xy(j,t+1))))
+                    denom += ((1/pk)*hmms[k].alpha.xy(i,t)*hmms[k].beta.xy(i,t))
+		    f.write('{}denom \\( \\stackrel{{+}}{{=}} \\frac{{1}}{{P_{}}} \\hat\\alpha_{}^{}({}) \\hat\\beta_{}^{}({}) \\)'.format('&nbsp'*6,k,t,k,i,t,k,i))
+		    f.write(' = ({})({})({}) = {}<br>'.format((1/pk),hmms[k].alpha.xy(i,t),hmms[k].beta.xy(i,t),((1/pk)*hmms[k].alpha.xy(i,t)*hmms[k].beta.xy(i,t))))
+            newa.mtx[i][j] = num/denom
+	    f.write('{}\\( \\bar a_{{{}{}}} = \\frac{{{}}}{{{}}} = {} \\)<br><br>'.format('&nbsp;'*2,i,j,num,denom,(num/denom)))
+    f.close()
+    return newa
+    
+    
+    
+    
+    
+    
+    
+    
