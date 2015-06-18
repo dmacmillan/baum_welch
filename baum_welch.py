@@ -14,6 +14,8 @@ class HMM:
         self.alpha = None
         self.cs = None
         self.beta = None
+	self.gamma = None
+	self.xi = None
 
 class MatrixError(Exception):
     pass
@@ -135,7 +137,9 @@ def calcAlpha(A,B,pi,obs,scale=True):
         #for s in xrange(alpha.m):
         #    c = 1 / sum(alpha.col(t))
         #    alpha.mtx[s][t] *= c
-        if scale and (t > 0):
+	# COMMENTED OUT BELOW LINE AND ADDED IN SECOND LINE BELOW
+        #if scale and (t > 0):
+        if scale:
             c = 1 / sum(alpha.col(t))
             cs.append(c)
             for s2 in xrange(alpha.m):
@@ -154,9 +158,10 @@ def calcBeta(A,B,pi,obs,cs=None):
         beta.mtx[s][beta.n-1] = 1
         #print '  Set beta[{}][{}] = 1'.format(s,beta.n-1)
     # Scale these
-    #if cs:
-    #    for s in xrange(beta.m):
-    #        beta.mtx[s][beta.n-1] *= cs[beta.n-1]
+    # UNCOMMENTED OUT BELOW 3 LINES
+    if cs:
+        for s in xrange(beta.m):
+            beta.mtx[s][beta.n-1] *= cs[beta.n-1]
             #print '  Scaled beta[{}][{}] *= {} = {}'.format(s,beta.n-1,cs[beta.n-1],beta.xy(s,beta.n-1))
     for t in xrange(beta.n-2,-1,-1):
         #print '  Time: {}'.format(t)
@@ -273,6 +278,36 @@ def printa(i,j,K):
     '''.format(i,j,K,i,i,j,j,j,K,i,i)
     
 # MULTIPLE OBSERVATIONS
+def multiCalcNewA(finhmm,hmms):
+    K = len(hmms)
+    newa = Matrix(finhmm.A.m,finhmm.A.n)
+    for i in xrange(newa.m):
+        for j in xrange(newa.n):
+	    num,denom = 0,0
+            for k in xrange(K):
+                Tk = len(hmms[k].O)
+                for t in xrange(Tk-1):
+                    num += hmms[k].xi.mtx[t][i][j]
+                    denom += hmms[k].gamma.xy(i,t)
+            newa.mtx[i][j] = num/denom
+    return newa
+
+def multiCalcNewB(finhmm,hmms,V):
+    K = len(hmms)
+    newb = Matrix(finhmm.B.m,finhmm.B.n)
+    newb.labels = finhmm.B.labels
+    for j in xrange(newb.m):
+        for k in xrange(newb.n):
+            num,denom = 0,0
+            for k2 in xrange(K):
+                Tk = len(hmms[k2].O)
+                for t in xrange(Tk):
+                    if newb.labels[hmms[k2].O[t]] == k:
+                        num += hmms[k2].gamma.xy(j,t)
+                    denom += hmms[k2].gamma.xy(j,t)
+            newb.mtx[j][k] = num/denom
+    return newb
+
 def mcalcNewA(finhmm,hmms):
     K = len(hmms)
     f = open('./lastrun.html','w')
@@ -285,25 +320,33 @@ def mcalcNewA(finhmm,hmms):
         for j in xrange(newa.n):
             f.write('{}j = {}<br>'.format('&nbsp;'*2,j))
             f.write('{}\\({}\\)<br>'.format('&nbsp;'*2,printa(i,j,K)))
-            num,denom = 0,0
+            num,denom = [],[]
             f.write('{}num = {}<br>'.format('&nbsp;'*2,num))
             f.write('{}denom = {}<br>'.format('&nbsp;'*2,denom))
             for k in xrange(K):
+                num.append(0)
+                denom.append(0)
                 Tk = len(hmms[k].O)
                 f.write('{}k = {}<br>'.format('&nbsp;'*2,k))
 		f.write('{} \\( T_{} = {} \\)<br>'.format('&nbsp;'*4,k,Tk))
                 pk = Pshmm(hmms[k].cs)
                 f.write('{}\\( P_{} = {} \\)<br>'.format('&nbsp;'*4,k,pk))
-                for t in xrange(Tk-2):
+                for t in xrange(Tk-1):
                     f.write('{}t = {}<br>'.format('&nbsp;'*4,t))
-                    num += ((1/pk)*hmms[k].alpha.xy(i,t)*finhmm.A.xy(i,j)*finhmm.B.xy(j,finhmm.B.labels[hmms[k].O[t+1]])*hmms[k].beta.xy(j,t+1))
-		    f.write('{}num \\( \\stackrel{{+}}{{=}} \\frac{{1}}{{P_{}}} \\hat\\alpha_{}^{}({}) a_{{{}{}}} b_{}(O_{{{}+1}}^{{({})}}) \\hat\\beta_{{{}+1}}^{}({}) \\)'.format('&nbsp;'*6,k,t,k,i,i,j,j,t,k,t,k,j))
-		    f.write(' = ({})({})({})({})({}) = {}<br>'.format((1/pk),hmms[k].alpha.xy(i,t),finhmm.A.xy(i,j),finhmm.B.xy(j,finhmm.B.labels[hmms[k].O[t+1]]),hmms[k].beta.xy(j,t+1),((1/pk)*hmms[k].alpha.xy(i,t)*finhmm.A.xy(i,j)*finhmm.B.xy(j,finhmm.B.labels[hmms[k].O[t+1]])*hmms[k].beta.xy(j,t+1))))
-                    denom += ((1/pk)*hmms[k].alpha.xy(i,t)*hmms[k].beta.xy(i,t))
-		    f.write('{}denom \\( \\stackrel{{+}}{{=}} \\frac{{1}}{{P_{}}} \\hat\\alpha_{}^{}({}) \\hat\\beta_{}^{}({}) \\)'.format('&nbsp'*6,k,t,k,i,t,k,i))
-		    f.write(' = ({})({})({}) = {}<br>'.format((1/pk),hmms[k].alpha.xy(i,t),hmms[k].beta.xy(i,t),((1/pk)*hmms[k].alpha.xy(i,t)*hmms[k].beta.xy(i,t))))
-            newa.mtx[i][j] = num/denom
-	    f.write('{}\\( \\bar a_{{{}{}}} = \\frac{{{}}}{{{}}} = {} \\)<br><br>'.format('&nbsp;'*2,i,j,num,denom,(num/denom)))
+                    num[k] += (hmms[k].alpha.xy(i,t)*finhmm.A.xy(i,j)*finhmm.B.xy(j,finhmm.B.labels[hmms[k].O[t+1]])*hmms[k].beta.xy(j,t+1))
+		    f.write('{}num[{}] \\( \\stackrel{{+}}{{=}} \\hat\\alpha_{}^{}({}) a_{{{}{}}} b_{}(O_{{{}+1}}^{{({})}}) \\hat\\beta_{{{}+1}}^{}({}) \\)'.format('&nbsp;'*6,k,t,k,i,i,j,j,t,k,t,k,j))
+		    f.write(' = ({})({})({})({}) = {}<br>'.format(hmms[k].alpha.xy(i,t),finhmm.A.xy(i,j),finhmm.B.xy(j,finhmm.B.labels[hmms[k].O[t+1]]),hmms[k].beta.xy(j,t+1),(hmms[k].alpha.xy(i,t)*finhmm.A.xy(i,j)*finhmm.B.xy(j,finhmm.B.labels[hmms[k].O[t+1]])*hmms[k].beta.xy(j,t+1))))
+                    denom[k] += (hmms[k].alpha.xy(i,t)*hmms[k].beta.xy(i,t))
+		    f.write('{}denom[{}] \\( \\stackrel{{+}}{{=}} \\hat\\alpha_{}^{}({}) \\hat\\beta_{}^{}({}) \\)'.format('&nbsp'*6,k,t,k,i,t,k,i))
+		    f.write(' = ({})({}) = {}<br>'.format(hmms[k].alpha.xy(i,t),hmms[k].beta.xy(i,t),(hmms[k].alpha.xy(i,t)*hmms[k].beta.xy(i,t))))
+		f.write('{}num[{}] = \\( num[{}]*\\frac{{1}}{{P_{}}} \\) =({})*({}) = {}<br>'.format('&nbsp;'*4,k,k,k,num[k],(1/pk),num[k]*(1/pk)))
+		f.write('{}denom[{}] = ({})*({}) = {}<br>'.format('&nbsp;'*4,k,denom[k],(1/pk),denom[k]*(1/pk)))
+                num[k] *= (1/pk)
+		denom[k] *= (1/pk)
+		f.write('{}num = {}<br>'.format('&nbsp;'*4,num))
+		f.write('{}denom = {}<br>'.format('&nbsp;'*4,denom))
+	    newa.mtx[i][j] = sum(num)/sum(denom)
+	    f.write('{}\\( \\bar a_{{{}{}}} = \\frac{{{}}}{{{}}} = {} \\)<br><br>'.format('&nbsp;'*2,i,j,sum(num),sum(denom),(sum(num)/sum(denom))))
     f.close()
     return newa
     
