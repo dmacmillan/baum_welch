@@ -248,6 +248,10 @@ def calcNewB(gamma,O,V):
 def Phmm(alpha):
     return sum(alpha.col(alpha.n-1))
     
+# Compute log of P(O|lambda)
+def logPshmm(cs):
+    return -1*sum([math.log(c) for c in cs])
+
 # Same as above but for scaled alpha
 def Pshmm(cs):
     #return -1*sum([math.log(c) for c in cs])
