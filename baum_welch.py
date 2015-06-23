@@ -359,8 +359,9 @@ def falseProbEquation(x):
 
 def falsePosProb(hmm,seq):
     counts,O = countSeq(seq,6)
+    length = len(O)
     alpha,cs = calcAlpha(hmm.A,hmm.B,hmm.pi,O)
-    logprob = logPshmm(cs)
+    logprob = logPshmm(cs)/length
     return falseProbEquation(logprob)
 
 def genRandomSeq(length):
