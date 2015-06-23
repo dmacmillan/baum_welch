@@ -354,15 +354,18 @@ def mcalcNewA(finhmm,hmms):
     f.close()
     return newa
 
-def falseProbEquation(x):
-    return (-0.7655*(x**3)) - (18.198*(x**2)) - (143.47*x) - 374.8
+def realProbEquation(x):
+    return (-0.8754*(x**2)) - (14.234*x) - 56.93
 
-def falsePosProb(hmm,seq):
+#def falseProbEquation(x):
+#    return (-0.7655*(x**3)) - (18.198*(x**2)) - (143.47*x) - 374.8
+
+def realProb(hmm,seq):
     counts,O = countSeq(seq,6)
     length = len(O)
     alpha,cs = calcAlpha(hmm.A,hmm.B,hmm.pi,O)
     logprob = logPshmm(cs)/length
-    return falseProbEquation(logprob)
+    return realProbEquation(logprob)
 
 def genRandomSeq(length):
     return ''.join(random.SystemRandom().choice('ACTG') for _ in xrange(length))
