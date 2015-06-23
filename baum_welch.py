@@ -353,11 +353,12 @@ def mcalcNewA(finhmm,hmms):
 	    f.write('{}\\( \\bar a_{{{}{}}} = \\frac{{{}}}{{{}}} = {} \\)<br><br>'.format('&nbsp;'*2,i,j,sum(num),sum(denom),(sum(num)/sum(denom))))
     f.close()
     return newa
-    
-    
-    
-    
-    
-    
-    
-    
+
+def falseProbEquation(x):
+    return (-0.7655*(x**3)) - (18.198*(x**2)) - (143.47*x) - 374.8
+
+def falsePosProb(hmm,seq):
+    counts,O = countSeq(seq,6)
+    alpha,cs = calcAlpha(hmm.A,hmm.B,hmm.pi,O)
+    logprob = logPshmm(cs)
+    return falseProbEquation(logprob)
