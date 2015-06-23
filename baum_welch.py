@@ -362,3 +362,6 @@ def falsePosProb(hmm,seq):
     alpha,cs = calcAlpha(hmm.A,hmm.B,hmm.pi,O)
     logprob = logPshmm(cs)
     return falseProbEquation(logprob)
+
+def genRandomSeq(length):
+    return ''.join(random.SystemRandom().choice('ACTG') for _ in xrange(length))
