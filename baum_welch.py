@@ -38,6 +38,7 @@ class Matrix:
         s='\n'.join([' '.join([str(item) for item in row]) for row in self.mtx])
         return s
 
+    # To implement
     def __mul__(self,mtx):
         if (self.n != mtx.m):
             raise MatrixError, 'Matrices cannot be multiplied!'
@@ -64,6 +65,7 @@ class Matrix:
             multiplier = float(1) / sum(self.mtx[i])
             self.mtx[i] = [x*multiplier for x in self.mtx[i]]
     
+    # Compute the dot product of two vectors
     @classmethod
     def dot(cls,v1,v2):
         return sum(p*q for p,q in zip(v1,v2))
@@ -113,67 +115,41 @@ def generateAllXmers(A,x):
         c = [x+y for x in A for y in c or A]
     return c
 
-#sys.stdout.write("Normalizing rows... ")
-#s = time.time()
-#sys.stdout.write("Done. Time: {}\n".format(time.time()-s))
-
+# Dot product for three vectors
 def dot3(x,y,z):
     return sum([a*b*c for a,b,c in zip(x,y,z)])
 
 def calcAlpha(A,B,pi,obs,scale=True):
     alpha = Matrix(B.m,len(obs))
     cs = []
-    #print 'Created alpha = {}x{} matrix'.format(alpha.m,alpha.n)
     for t in xrange(alpha.n):
-        #print '  Time: {}'.format(t)
         for s in xrange(alpha.m):
-            #print '  State: {}'.format(s)
             if (t == 0):
                 alpha.mtx[s][0] = pi.xy(0,s)*B.xy(s,B.labels[obs[0]])
-                #print '    alpha[{}][0] = {}'.format(s,alpha.xy(s,t))
             else:
                 alpha.mtx[s][t] = B.xy(s,B.labels[obs[t]])*Matrix.dot(alpha.col(t-1),A.col(s))
-                #print '    alpha[{}][{}] = {}'.format(s,t,alpha.xy(s,t))
-        #for s in xrange(alpha.m):
-        #    c = 1 / sum(alpha.col(t))
-        #    alpha.mtx[s][t] *= c
-	# COMMENTED OUT BELOW LINE AND ADDED IN SECOND LINE BELOW
-        #if scale and (t > 0):
         if scale:
             c = 1 / sum(alpha.col(t))
             cs.append(c)
             for s2 in xrange(alpha.m):
-                #print '  Scaling:'
-                #print '    alpha[{}][{}] = {} / sum({})'.format(s,t,alpha.xy(s,t),alpha.col(t))
                 alpha.mtx[s2][t] *= c
-                #print '    alpha[{}][{}] = {}'.format(s,t,alpha.xy(s,t))
-        #raw_input('*')
     return [alpha,cs]
 
 def calcBeta(A,B,pi,obs,cs=None):
     beta = Matrix(B.m,len(obs))
-    #print 'Created beta = {}x{} matrix'.format(beta.m,beta.n)
-    # Set for t = last element
     for s in xrange(beta.m):
         beta.mtx[s][beta.n-1] = 1
-        #print '  Set beta[{}][{}] = 1'.format(s,beta.n-1)
     # Scale these
-    # UNCOMMENTED OUT BELOW 3 LINES
     if cs:
         for s in xrange(beta.m):
             beta.mtx[s][beta.n-1] *= cs[beta.n-1]
-            #print '  Scaled beta[{}][{}] *= {} = {}'.format(s,beta.n-1,cs[beta.n-1],beta.xy(s,beta.n-1))
     for t in xrange(beta.n-2,-1,-1):
-        #print '  Time: {}'.format(t)
         for s in xrange(beta.m):
-            #print '    State: {}'.format(s)
             beta.mtx[s][t] = dot3(beta.col(t+1),A.mtx[s][:],B.col(B.labels[obs[t+1]]))
-            #print '      beta[{}][{}] = {}'.format(s,t,beta.xy(s,t))
         # Scale remaining
         if cs:
             for s2 in xrange(beta.m):
                 beta.mtx[s2][t] *= cs[t]
-        #raw_input('*')
     return beta
 
 def calcGamma(alpha,beta):
@@ -192,18 +168,12 @@ def calcXi(alpha,beta,A,B,O):
     for t in xrange(xi.m):
         for i in xrange(xi.n):
             for j in xrange(xi.z):
-                #print 'Setting xi[{}][{}][{}]'.format(t,i,j)
                 num = alpha.xy(i,t)*A.xy(i,j)*B.xy(j,B.labels[O[t+1]])*beta.xy(j,t+1)
-                #print '  num = {}*{}*{}*{}'.format(alpha.xy(i,t),A.xy(i,j),B.xy(j,B.labels[O[t+1]]),beta.xy(j,t+1))
                 denom = 0
                 for p in xrange(xi.n):
                     for q in xrange(xi.z):
-                        #print '  denom += (({})({})({})({}))'.format(alpha.xy(p,t),A.xy(p,q),B.xy(q,B.labels[O[t+1]]),beta.xy(q,t+1))
                         denom += (alpha.xy(p,t)*A.xy(p,q)*B.xy(q,B.labels[O[t+1]])*beta.xy(q,t+1))
-                        #print '    denom += (alpha[{}][{}])(a[{}][{}])(b[{}][{}])(beta[{}][{}]) = {}'.format(p,t,p,q,q,B.labels[O[t+1]],q,t+1,denom)
-                        #print '    denom = {}'.format(denom)
                 xi.mtx[t][i][j] = num/denom
-                #raw_input('*')
     return xi
 
 def calcNewPi(gamma,scale=True):
@@ -219,20 +189,11 @@ def calcNewPi(gamma,scale=True):
 def calcNewA(xi,gamma):
     newa = Matrix(gamma.m,gamma.m)
     for i in xrange(newa.m):
-        #print 'i: {}'.format(i)
         denom = sum(gamma.mtx[i][:-1])
-        #print 'denom = sum({}) = {}'.format(gamma.mtx[i],denom)
         num = 0
         for j in xrange(newa.n):
-            #print '  j: {}'.format(j)
-            #for x in xi.mtx:
-                #num += x[i][j]
-            #print 'num = sum([x[{}] for x in xi.col({})])'.format(j,i)
-            #print '=sum({})'.format([x[j] for x in xi.col(i)])
             num = sum([x[j] for x in xi.col(i)])
             newa.mtx[i][j] = num/denom
-            #print 'newa[{}][{}] = {}/{}'.format(i,j,num,denom)
-            #print 'newa[{}][{}] = {}/{} = {}'.format(i,j,num,denom,(num/denom))
     return newa
 
 def calcNewB(gamma,O,V):
@@ -260,6 +221,8 @@ def Pshmm(cs):
         prod *= c
     return 1/prod
 
+# This function prints out the formula for the calculation
+# of alpha in latex format
 def printa(i,j,K):
     return '''
     \\bar a_{{{}{}}}
@@ -312,6 +275,10 @@ def multiCalcNewB(finhmm,hmms,V):
             newb.mtx[j][k] = num/denom
     return newb
 
+# This function is somewhat of a debugging function
+# which runs the algorithm on a set of data and
+# writes html output to a file. Equations are written
+# in latex format (viewed with MathJax in HTML) at each step
 def mcalcNewA(finhmm,hmms):
     K = len(hmms)
     f = open('./lastrun.html','w')
@@ -356,9 +323,6 @@ def mcalcNewA(finhmm,hmms):
 
 def realProbEquation(x):
     return (-0.8754*(x**2)) - (14.234*x) - 56.93
-
-#def falseProbEquation(x):
-#    return (-0.7655*(x**3)) - (18.198*(x**2)) - (143.47*x) - 374.8
 
 def realProb(hmm,seq):
     counts,O = countSeq(seq,6)

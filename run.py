@@ -6,8 +6,6 @@ N = len(S)
 # Read in 3utrs
 f = open('./3utrs','r')
 lines = f.readlines()
-#lines = [x.strip().split('\t') for x in lines]
-#lines = [x[2] for x in lines]
 lines = [x.strip() for x in lines]
 Os = lines[:]
 lines = None
